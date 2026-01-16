@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>English Teacher Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#f5f5f7;
+  --glass:rgba(255,255,255,.85);
+  --accent:#0071e3;
+  --text:#1d1d1f;
+  --border:rgba(0,0,0,.1);
+}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{margin:0;background:linear-gradient(180deg,#f5f5f7,#e9e9ee);color:var(--text);}
+header{display:flex;align-items:center;padding:16px 20px;}
+h1{margin-left:14px;font-size:22px}
+.burger{width:28px;cursor:pointer}
+.burger span{display:block;height:3px;background:#000;margin:6px 0;border-radius:2px;}
+.container{max-width:1000px;margin:auto;padding:20px;display:grid;gap:20px;}
+.card{background:var(--glass);backdrop-filter:blur(20px);border-radius:24px;padding:24px;box-shadow:0 20px 40px rgba(0,0,0,.12);animation:appear .5s ease;}
+@keyframes appear{from{opacity:0;transform:translateY(10px)}}
+button,select,textarea,input{width:100%;padding:14px;border-radius:14px;border:1px solid var(--border);margin-top:10px;font-size:16px;}
+button{background:var(--accent);color:#fff;border:none;cursor:pointer;}
+.result{margin-top:20px;font-size:26px;font-weight:700;text-align:center;transition:.4s;}
+.spin{filter:blur(6px);transform:scale(.95);}
+.log{font-size:14px;max-height:150px;overflow:auto;}
+.menu{position:fixed;top:0;left:-260px;width:240px;height:100%;background:var(--glass);backdrop-filter:blur(20px);padding:20px;transition:.3s;z-index:10;}
+.menu.open{left:0}
+.menu a,.menu button{display:block;margin-top:14px;background:none;border:none;font-size:16px;text-align:left;cursor:pointer;color:#1d1d1f;}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);display:none;z-index:9;}
+.overlay.show{display:block}
+.secret{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.35);z-index:20;}
+.secret.show{display:grid}
+.secret .card{max-width:520px;}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px;}
+.calendar-day{background:rgba(0,0,0,.05);padding:6px;border-radius:6px;min-height:60px;position:relative;cursor:pointer;}
+.reminder-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;position:absolute;top:5px;right:5px;}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;place-items:center;z-index:30;}
+.modal.show{display:grid}
+.modal .card{max-width:400px;padding:20px;display:flex;flex-direction:column;gap:10px;}
+.reminder-item{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,.05);padding:6px 10px;border-radius:6px;}
+.reminder-item button{margin-left:6px;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:12px;}
+.reminder-edit{background:orange;color:#fff;}
+.reminder-del{background:red;color:#fff;}
+.note-item{background:rgba(0,0,0,.05);padding:6px;margin-top:6px;border-radius:6px;position:relative;}
+@media(max-width:600px){.container{display:block;padding:10px;} h1{font-size:18px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="burger" id="burger"><span></span><span></span><span></span></div>
+  <h1>English Teacher</h1>
+</header>
+
+<div class="menu" id="menu">
+  <a href="https://id.human.ua/" target="_blank">Human</a>
+  <a href="https://chat.openai.com" target="_blank">ChatGPT</a>
+  <a href="https://www.zerogpt.com/" target="_blank">ZeroGPT</a>
+  <button onclick="openSecret()">🔒 Teacher panel</button>
+</div>
+<div class="overlay" id="overlay"></div>
+
+<div class="container">
+
+<div class="card">
+<h3>🎲 Group randomizer</h3>
+<textarea id="students" placeholder="One student per line"></textarea>
+<select id="groupCount"><option>2</option><option>3</option><option>4</option></select>
+<button onclick="makeGroups()">Generate</button>
+<div id="groups"></div>
+</div>
+
+<div class="card">
+<h3>📚 Homework generator</h3>
+<select id="hwTypeMain">
+<option value="vocab">Vocabulary</option>
+<option value="grammar">Grammar</option>
+<option value="writing">Writing</option>
+<option value="speaking">Speaking</option>
+<option value="listening">Listening</option>
+</select>
+<button onclick="generateHW()">Generate homework</button>
+<div class="result" id="hwResult"></div>
+</div>
+
+<div class="card">
+<h3>🎯 To the board</h3>
+<button onclick="pickStudent()">Choose student</button>
+<div class="result" id="boardResult"></div>
+</div>
+
+<div class="card">
+<h3>🔔 Reminder & Calendar</h3>
+<input id="remText" placeholder="Reminder text">
+<input type="datetime-local" id="remTime">
+<button onclick="addReminder()">Add reminder</button>
+<div class="calendar" id="calendar"></div>
+</div>
+
+<div class="card">
+<h3>📋 Log</h3>
+<div class="log" id="log"></div>
+</div>
+
+</div>
+
+<div class="secret" id="secret">
+<div class="card">
+<h3>🔐 Teacher panel</h3>
+<input type="password" id="pass" placeholder="Password">
+<button id="enterBtn" onclick="auth()">Enter</button>
+<div id="secretContent" style="display:none">
+
+<h4>📚 Homework Lists</h4>
+<select id="hwType">
+<option value="vocab">Vocabulary</option>
+<option value="grammar">Grammar</option>
+<option value="writing">Writing</option>
+<option value="speaking">Speaking</option>
+<option value="listening">Listening</option>
+</select>
+<textarea id="hwList" placeholder="Homework list"></textarea>
+<button onclick="saveHW()">Save</button>
+<hr style="margin:20px 0">
+
+<h4>👩‍🎓 Students list (hidden)</h4>
+<textarea id="studentsBoard" placeholder="One student per line"></textarea>
+<button onclick="saveStudents()">Save students</button>
+<hr style="margin:20px 0">
+
+<h4>📝 Notes</h4>
+<textarea id="noteInput" placeholder="Write a note"></textarea>
+<button onclick="addNote()">Save Note</button>
+<div id="notesList"></div>
+
+<button onclick="closeSecret()">Close</button>
+</div>
+</div>
+</div>
+
+<div class="modal" id="modal">
+<div class="card">
+<h4>Reminders</h4>
+<div id="modalContent"></div>
+<button onclick="closeModal()">Close</button>
+</div>
+</div>
+
+<script>
+const menu=document.getElementById("menu");
+const overlay=document.getElementById("overlay");
+const logEl=document.getElementById("log");
+const enterBtn=document.getElementById("enterBtn");
+const secret=document.getElementById("secret");
+const modal=document.getElementById("modal");
+const modalContent=document.getElementById("modalContent");
+const pass=document.getElementById("pass");
+const secretContent=document.getElementById("secretContent");
+const hwType=document.getElementById("hwType");
+const hwList=document.getElementById("hwList");
+const hwTypeMain=document.getElementById("hwTypeMain");
+const studentsBoard=document.getElementById("studentsBoard");
+
+burger.onclick=()=>{menu.classList.add("open");overlay.classList.add("show")}
+overlay.onclick=()=>{menu.classList.remove("open");overlay.classList.remove("show")}
+function log(msg){logEl.innerHTML+=`• ${msg}<br>`;logEl.scrollTop=logEl.scrollHeight;}
+
+function openSecret(){secret.classList.add("show");menu.classList.remove("open");overlay.classList.remove("show")}
+function closeSecret(){ 
+  if(hasUnsaved()){if(!confirm("You have unsaved changes! Proceed?")) return;}
+  secret.classList.remove("show"); 
+}
+
+function auth(){
+  if(pass.value==="english"){
+    secretContent.style.display="block"; 
+    pass.style.display="none"; 
+    enterBtn.style.display="none";
+    renderCalendar();
+    loadNotes();
+    log("Teacher logged in");
+  } else alert("Wrong password");
+}
+
+function hasUnsaved(){
+  const hwCurrent = hwList.value;
+  const hwSaved = localStorage["hw_"+hwType.value]||"";
+  const studentsCurrent = studentsBoard.value;
+  const studentsSaved = localStorage.board_students||"";
+  return hwCurrent!==hwSaved || studentsCurrent!==studentsSaved;
+}
+
+hwType.onchange=()=>hwList.value=localStorage["hw_"+hwType.value]||"";
+function saveHW(){localStorage["hw_"+hwType.value]=hwList.value;log("Homework saved: "+hwType.value);}
+function generateHW(){
+  const r=document.getElementById("hwResult");
+  r.classList.add("spin"); r.textContent="Choosing...";
+  setTimeout(()=>{
+    const list=(localStorage["hw_"+hwTypeMain.value]||"").split("\n").filter(Boolean);
+    if(!list.length)return;
+    r.textContent=list[Math.floor(Math.random()*list.length)];
+    r.classList.remove("spin");
+    log("Homework generated");
+  },900);
+}
+
+function makeGroups(){
+  const names=document.getElementById("students").value.split("\n").filter(Boolean).sort(()=>Math.random()-0.5);
+  const n=+document.getElementById("groupCount").value;
+  const groups=document.getElementById("groups");
+  groups.innerHTML="";
+  for(let i=0;i<n;i++){
+    const c=document.createElement("div");
+    c.className="card";
+    c.innerHTML="<b>Group "+(i+1)+"</b><br>"+names.filter((_,j)=>j%n===i).join("<br>");
+    groups.appendChild(c);
+  }
+  log("Groups generated");
+}
+
+studentsBoard.value=localStorage.board_students||"";
+function saveStudents(){localStorage.board_students=studentsBoard.value; log("Students list saved");}
+function pickStudent(){
+  const box=document.getElementById("boardResult");
+  const list=(localStorage.board_students||"").split("\n").map(s=>s.trim()).filter(Boolean);
+  if(!list.length){box.textContent="No students"; return;}
+  box.classList.add("spin"); box.textContent="Choosing...";
+  setTimeout(()=>{
+    box.textContent=list[Math.floor(Math.random()*list.length)];
+    box.classList.remove("spin");
+    log("Student to board: "+box.textContent);
+  },900);
+}
+
+// Reminders & Calendar
+function addReminder(){
+  if(Notification.permission!=="granted")Notification.requestPermission();
+  const text=document.getElementById("remText").value;
+  const time=new Date(document.getElementById("remTime").value);
+  const delay=time-Date.now();
+  if(delay<=0)return;
+  setTimeout(()=>new Notification("Reminder",{body:text}),delay);
+  const list=JSON.parse(localStorage.rem||"[]");
+  list.push({text,time});
+  localStorage.rem=JSON.stringify(list);
+  renderCalendar();
+  log("Reminder added");
+}
+
+function renderCalendar(){
+  const calendar=document.getElementById("calendar");
+  calendar.innerHTML="";
+  const today=new Date();
+  const start=new Date(today.getFullYear(),today.getMonth(),1);
+  for(let i=0;i<31;i++){
+    const d=document.createElement("div");
+    d.className="calendar-day";
+    const day=new Date(start.getFullYear(),start.getMonth(),i+1);
+    d.textContent=i+1;
+    const reminders=(JSON.parse(localStorage.rem||"[]")).filter(r=>{
+      const rt=new Date(r.time);
+      return rt.getDate()===day.getDate() && rt.getMonth()===day.getMonth() && rt.getFullYear()===day.getFullYear();
+    });
+    if(reminders.length){
+      const dot=document.createElement("div");dot.className="reminder-dot";d.appendChild(dot);
+      d.dataset.reminders=JSON.stringify(reminders);
+    }
+    d.onclick=()=>{if(d.dataset.reminders){openModal(JSON.parse(d.dataset.reminders), day)}};
+    calendar.appendChild(d);
+  }
+}
+
+function openModal(reminders, date){
+  modalContent.innerHTML="";
+  reminders.forEach((r,i)=>{
+    const div=document.createElement("div");
+    div.className="reminder-item";
+    const span=document.createElement("span"); span.textContent=r.text;
+    div.appendChild(span);
+    const editBtn=document.createElement("button"); editBtn.textContent="Edit"; editBtn.className="reminder-edit";
+    editBtn.onclick=()=>editReminder(date,i);
+    div.appendChild(editBtn);
+    const delBtn=document.createElement("button"); delBtn.textContent="Delete"; delBtn.className="reminder-del";
+    delBtn.onclick=()=>deleteReminder(date,i);
+    div.appendChild(delBtn);
+    modalContent.appendChild(div);
+  });
+  modal.classList.add("show");
+}
+function closeModal(){modal.classList.remove("show");}
+
+function deleteReminder(date,i){
+  const list=JSON.parse(localStorage.rem||"[]");
+  const filtered=list.filter(r=>{
+    const rt=new Date(r.time);
+    return !(rt.getDate()===date.getDate() && rt.getMonth()===date.getMonth() && rt.getFullYear()===date.getFullYear());
+  });
+  filtered.splice(i,1);
+  localStorage.rem=JSON.stringify(filtered);
+  renderCalendar();
+  closeModal();
+  log("Reminder deleted");
+}
+function editReminder(date,i){
+  const list=JSON.parse(localStorage.rem||"[]");
+  const filtered=list.filter(r=>{
+    const rt=new Date(r.time);
+    return rt.getDate()===date.getDate() && rt.getMonth()===date.getMonth() && rt.getFullYear()===date.getFullYear();
+  });
+  const newText=prompt("Edit reminder:", filtered[i].text);
+  if(newText!==null){filtered[i].text=newText; list.splice(list.indexOf(filtered[i]),1,filtered[i]); localStorage.rem=JSON.stringify(list);}
+  renderCalendar();
+  closeModal();
+  log("Reminder edited");
+}
+
+// Notes
+const notesList=document.getElementById("notesList");
+function loadNotes(){
+  notesList.innerHTML="";
+  const notes=JSON.parse(localStorage.notes||"[]");
+  notes.forEach((n,i)=>{
+    const div=document.createElement("div");
+    div.className="note-item";
+    div.textContent=n;
+    const btn=document.createElement("button");
+    btn.textContent="X";
+    btn.onclick=()=>{deleteNote(i)};
+    div.appendChild(btn);
+    notesList.appendChild(div);
+  });
+}
+function addNote(){
+  const val=document.getElementById("noteInput").value.trim();
+  if(!val)return;
+  const notes=JSON.parse(localStorage.notes||"[]");
+  notes.push(val);
+  localStorage.notes=JSON.stringify(notes);
+  document.getElementById("noteInput").value="";
+  loadNotes();
+  log("Note added");
+}
+function deleteNote(i){
+  const notes=JSON.parse(localStorage.notes||"[]");
+  notes.splice(i,1);
+  localStorage.notes=JSON.stringify(notes);
+  loadNotes();
+  log("Note deleted");
+}
+</script>
+</body>
+</html>
